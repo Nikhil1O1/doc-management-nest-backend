@@ -26,11 +26,28 @@ export class DocumentsService {
     userId: string,
   ): Promise<Document> {
     try {
-      // Generate file checksum
-      const checksum = crypto
-        .createHash('md5')
-        .update(file.buffer)
-        .digest('hex');
+      // Generate file checksum from file on disk
+      let checksum: string;
+      if (file.buffer) {
+        // For memory storage
+        checksum = crypto
+          .createHash('md5')
+          .update(file.buffer)
+          .digest('hex');
+      } else if (file.path) {
+        // For disk storage, read file and generate checksum
+        const fileBuffer = await fs.readFile(file.path);
+        checksum = crypto
+          .createHash('md5')
+          .update(fileBuffer)
+          .digest('hex');
+      } else {
+        // Fallback: generate checksum from filename and timestamp
+        checksum = crypto
+          .createHash('md5')
+          .update(`${file.originalname}-${Date.now()}`)
+          .digest('hex');
+      }
 
       // Determine document type based on mime type
       const documentType = this.getDocumentTypeFromMimeType(file.mimetype);
@@ -50,7 +67,17 @@ export class DocumentsService {
 
       return await this.documentRepository.save(document);
     } catch (error) {
-      throw new InternalServerErrorException('Failed to create document');
+      console.error('Document creation error:', error);
+      console.error('Error details:', error.message);
+      console.error('File details:', { 
+        originalname: file?.originalname,
+        mimetype: file?.mimetype,
+        size: file?.size,
+        path: file?.path 
+      });
+      console.error('User ID:', userId);
+      console.error('DTO:', createDocumentDto);
+      throw new InternalServerErrorException(`Failed to create document: ${error.message}`);
     }
   }
 
