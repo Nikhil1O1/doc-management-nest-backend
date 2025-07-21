@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
 
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -49,18 +47,6 @@ import { AppService } from './app.service';
           };
         }
       },
-      inject: [ConfigService],
-    }),
-
-    // Serve static files (for React frontend)
-    ServeStaticModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => [
-        {
-          rootPath: join(__dirname, '..', 'frontend', 'build'),
-          exclude: ['/api*'],
-        },
-      ],
       inject: [ConfigService],
     }),
 

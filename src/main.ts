@@ -20,8 +20,10 @@ async function bootstrap() {
   // CORS configuration
   app.enableCors({
     origin: [
-      configService.get('FRONTEND_URL', 'http://localhost:3001'),
       'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://localhost:3003',
     ],
     credentials: true,
   });
@@ -70,7 +72,7 @@ async function bootstrap() {
   await app.listen(port);
 
   logger.log(`Application is running on: http://localhost:${port}`);
-  logger.log(`Swagger documentation available at: http://localhost:${port}/api/docs`);
+  logger.log(`Swagger documentation is available at: http://localhost:${port}/api/docs`);
 }
 
 bootstrap(); 

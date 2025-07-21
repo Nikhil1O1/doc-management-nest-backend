@@ -1,7 +1,7 @@
 {
   "name": "doc-management-nest-backend",
   "version": "1.0.0",
-  "description": "Document Management System with NestJS Backend and React Frontend",
+  "description": "Document Management System with NestJS Backend",
   "author": "Document Management Team",
   "private": true,
   "license": "MIT",
@@ -22,9 +22,6 @@
     "migration:generate": "npm run typeorm -- migration:generate ./src/database/migrations/migration -d ./src/database/data-source.ts",
     "migration:run": "npm run typeorm -- migration:run -d ./src/database/data-source.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d ./src/database/data-source.ts",
-    "frontend:install": "cd frontend && npm install",
-    "frontend:build": "cd frontend && npm run build",
-    "frontend:start": "cd frontend && npm start",
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down"
@@ -36,7 +33,6 @@
     "@nestjs/jwt": "^10.1.1",
     "@nestjs/passport": "^10.0.2",
     "@nestjs/platform-express": "^10.2.7",
-    "@nestjs/serve-static": "^4.0.0",
     "@nestjs/swagger": "^7.1.16",
     "@nestjs/typeorm": "^10.0.0",
     "axios": "^1.6.0",
@@ -100,9 +96,5 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
   }
 }

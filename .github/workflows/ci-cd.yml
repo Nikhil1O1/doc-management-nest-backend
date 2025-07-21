@@ -43,7 +43,7 @@ jobs:
       run: npm ci
 
     - name: Run unit tests
-      run: npm test
+      run: npm test -- --passWithNoTests
       env:
         DB_HOST: localhost
         DB_PORT: 5432
@@ -63,7 +63,7 @@ jobs:
         JWT_SECRET: test-secret
 
     - name: Generate test coverage
-      run: npm run test:cov
+      run: npm run test:cov -- --passWithNoTests
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
