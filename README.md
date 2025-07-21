@@ -1,6 +1,6 @@
 # Document Management System
 
-A comprehensive document management system built with NestJS backend, PostgreSQL database, and React frontend. This system provides user authentication, document upload/management, and integration points for RAG-based Q&A systems using a microservices architecture.
+A comprehensive document management system built with NestJS backend and PostgreSQL database. This system provides user authentication, document upload/management, and integration points for RAG-based Q&A systems using a microservices architecture.
 
 ## Table of Contents
 
@@ -40,13 +40,6 @@ The system is designed with a microservices architecture pattern, featuring:
 - Ingestion Management: Job management for document processing pipeline
 - Database: PostgreSQL with TypeORM
 - API Documentation: Swagger/OpenAPI integration
-
-**Frontend (React)**
-- Authentication: Login/Register with protected routes
-- Dashboard: Role-based dashboard with navigation
-- Document Interface: Basic document management interface
-- User Management: Admin interface for user management
-- Responsive Design: Mobile-friendly interface
 
 **Infrastructure**
 - Message Queue: RabbitMQ for event-driven communication
@@ -135,16 +128,6 @@ doc-management-nest-backend/
 │   ├── app.module.ts                 # Application root module
 │   ├── app.service.ts                # Application root service
 │   └── main.ts                       # Application entry point
-├── frontend/                         # React frontend application
-│   ├── public/                       # Static assets
-│   ├── src/                          # React source code
-│   │   ├── components/               # Reusable components
-│   │   ├── contexts/                 # React contexts
-│   │   ├── pages/                    # Page components
-│   │   ├── App.tsx                   # Main app component
-│   │   └── index.tsx                 # React entry point
-│   ├── package.json                  # Frontend dependencies
-│   └── tsconfig.json                 # TypeScript configuration
 ├── test/                             # End-to-end tests
 │   ├── setup-e2e.ts                 # Test setup configuration
 │   ├── documents.e2e-spec.ts        # Document upload tests
@@ -213,14 +196,7 @@ doc-management-nest-backend/
    npm install
    ```
 
-3. **Install frontend dependencies**
-   ```bash
-   cd frontend
-   npm install
-   cd ..
-   ```
-
-4. **Environment configuration**
+3. **Environment configuration**
    ```bash
    cp .env.example .env
    ```
@@ -242,11 +218,10 @@ doc-management-nest-backend/
    # Application Configuration
    PORT=3000
    NODE_ENV=development
-   FRONTEND_URL=http://localhost:3001
    PYTHON_BACKEND_URL=http://localhost:8000
    ```
 
-5. **Database setup**
+4. **Database setup**
    
    For PostgreSQL:
    ```bash
@@ -263,17 +238,9 @@ doc-management-nest-backend/
    mkdir -p data
    ```
 
-6. **Start the development servers**
-   
-   Backend:
+5. **Start the development server**
    ```bash
    npm run start:dev
-   ```
-   
-   Frontend (in a new terminal):
-   ```bash
-   cd frontend
-   npm start
    ```
 
 ### Docker Setup
@@ -670,6 +637,5 @@ For support and questions:
 ## Acknowledgments
 
 - NestJS framework for the robust backend architecture
-- React community for frontend development
 - Docker and Kubernetes for containerization
 - All contributors and maintainers 
