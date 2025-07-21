@@ -1,0 +1,30 @@
+# Auth Service Dockerfile
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install deps
+COPY package*.json ./
+RUN npm ci
+
+# Copy source
+COPY . .
+
+# Build only auth service (compiles entire backend; entry later scopes to module)
+RUN npm run build
+
+# Production image
+FROM node:18-alpine AS production
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy compiled sources
+COPY --from=builder /app/dist ./dist
+
+# Expose service port
+ENV SERVICE_PORT=3001
+EXPOSE 3001
+
+CMD ["node", "dist/main"] 

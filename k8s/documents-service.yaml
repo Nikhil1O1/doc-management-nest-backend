@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: documents-service
+  namespace: doc-management
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: documents-service
+  template:
+    metadata:
+      labels:
+        app: documents-service
+    spec:
+      containers:
+      - name: documents-service
+        image: doc-management/documents-service:latest
+        ports:
+        - containerPort: 3002
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: SERVICE_PORT
+          value: "3002"
+        - name: DB_HOST
+          value: "documents-db-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USERNAME
+          value: "documents_user"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: documents-db-secret
+              key: password
+        - name: DB_NAME
+          value: "documents_db"
+        volumeMounts:
+        - name: uploads-storage
+          mountPath: /app/uploads
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: uploads-storage
+        persistentVolumeClaim:
+          claimName: uploads-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: documents-service
+  namespace: doc-management
+spec:
+  selector:
+    app: documents-service
+  ports:
+    - protocol: TCP
+      port: 3002
+      targetPort: 3002
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads-pvc
+  namespace: doc-management
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi 

@@ -1,0 +1,283 @@
+version: '3.8'
+
+services:
+  # Message Queue - Event Bus
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - doc-management-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Service Discovery
+  consul:
+    image: consul:latest
+    restart: unless-stopped
+    ports:
+      - "8500:8500"
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
+    volumes:
+      - consul_data:/consul/data
+    networks:
+      - doc-management-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      CONSUL_URL: http://consul:8500
+    ports:
+      - "3000:3000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_started
+    networks:
+      - doc-management-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: auth-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      SERVICE_NAME: auth-service
+      SERVICE_PORT: 3001
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      DB_USERNAME: auth_user
+      DB_PASSWORD: auth_password
+      DB_NAME: auth_db
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      CONSUL_URL: http://consul:8500
+    ports:
+      - "3001:3001"
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - doc-management-network
+
+  # Documents Service
+  documents-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: documents-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      SERVICE_NAME: documents-service
+      SERVICE_PORT: 3002
+      DB_HOST: documents-db
+      DB_PORT: 5432
+      DB_USERNAME: documents_user
+      DB_PASSWORD: documents_password
+      DB_NAME: documents_db
+      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      CONSUL_URL: http://consul:8500
+    ports:
+      - "3002:3002"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      documents-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - doc-management-network
+
+  # Ingestion Service
+  ingestion-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ingestion-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      SERVICE_NAME: ingestion-service
+      SERVICE_PORT: 3003
+      DB_HOST: ingestion-db
+      DB_PORT: 5432
+      DB_USERNAME: ingestion_user
+      DB_PASSWORD: ingestion_password
+      DB_NAME: ingestion_db
+      PYTHON_BACKEND_URL: ${PYTHON_BACKEND_URL:-http://python-backend:8000}
+      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      CONSUL_URL: http://consul:8500
+    ports:
+      - "3003:3003"
+    depends_on:
+      ingestion-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - doc-management-network
+
+  # Python Backend Service (External)
+  python-backend:
+    image: python:3.11-slim
+    restart: unless-stopped
+    environment:
+      PYTHON_BACKEND_PORT: 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./python-backend:/app
+    working_dir: /app
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+    networks:
+      - doc-management-network
+
+  # Databases - One per service
+  auth-db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - doc-management-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  documents-db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: documents_db
+      POSTGRES_USER: documents_user
+      POSTGRES_PASSWORD: documents_password
+    volumes:
+      - documents_db_data:/var/lib/postgresql/data
+    networks:
+      - doc-management-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U documents_user -d documents_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ingestion-db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ingestion_db
+      POSTGRES_USER: ingestion_user
+      POSTGRES_PASSWORD: ingestion_password
+    volumes:
+      - ingestion_db_data:/var/lib/postgresql/data
+    networks:
+      - doc-management-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ingestion_user -d ingestion_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring & Observability
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    networks:
+      - doc-management-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - doc-management-network
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - doc-management-network
+
+  # pgAdmin (Optional - for database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@docmanagement.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - doc-management-network
+    profiles:
+      - debug
+
+volumes:
+  rabbitmq_data:
+    driver: local
+  consul_data:
+    driver: local
+  auth_db_data:
+    driver: local
+  documents_db_data:
+    driver: local
+  ingestion_db_data:
+    driver: local
+  uploads_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  doc-management-network:
+    driver: bridge 

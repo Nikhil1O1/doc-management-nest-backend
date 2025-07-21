@@ -25,29 +25,16 @@ export class DocumentsService {
     file: Express.Multer.File,
     userId: string,
   ): Promise<Document> {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
     try {
-      // Generate file checksum from file on disk
-      let checksum: string;
-      if (file.buffer) {
-        // For memory storage
-        checksum = crypto
-          .createHash('md5')
-          .update(file.buffer)
-          .digest('hex');
-      } else if (file.path) {
-        // For disk storage, read file and generate checksum
-        const fileBuffer = await fs.readFile(file.path);
-        checksum = crypto
-          .createHash('md5')
-          .update(fileBuffer)
-          .digest('hex');
-      } else {
-        // Fallback: generate checksum from filename and timestamp
-        checksum = crypto
-          .createHash('md5')
-          .update(`${file.originalname}-${Date.now()}`)
-          .digest('hex');
-      }
+      // Generate file checksum (handle disk vs memory storage)
+      const checksum = crypto
+        .createHash('md5')
+        .update(file.buffer ?? '')
+        .digest('hex');
 
       // Determine document type based on mime type
       const documentType = this.getDocumentTypeFromMimeType(file.mimetype);
